@@ -22,6 +22,7 @@ from api.db.services.dialog_service import message_fit_in
 from api.db.services.llm_service import LLMBundle
 from api import settings
 from agent.component.base import ComponentBase, ComponentParamBase
+from rag.nlp import is_chinese
 
 
 class GenerateParam(ComponentParamBase):
@@ -228,6 +229,7 @@ class Generate(ComponentBase):
 
         if self._param.cite and "content_ltks" in retrieval_res.columns and "vector" in retrieval_res.columns:
             res = self.set_cite(retrieval_res, answer)
+            self.format_cite(res)
             yield res
 
         self.set_output(Generate.be_output(res))
@@ -245,3 +247,63 @@ class Generate(ComponentBase):
         u = kwargs.get("user")
         ans = chat_mdl.chat(prompt, [{"role": "user", "content": u if u else "Output: "}], self._param.gen_conf())
         return pd.DataFrame([ans])
+
+    def format_cite(self, response):
+        REF_DOC_CN = "参考资料"
+        REF_DOC_EN = "Reference Sources"
+
+        if not response:
+            return
+
+        ref = response.get('reference')
+        if not ref:
+            return
+
+        chunks = ref.get('chunks')
+        cite_text_links = []
+        cite_local_docs = []
+        for chunk in chunks:
+            content = chunk.get('content')
+            if content and "http" in content: # suppose there is cite link in the chunk
+                http_pattern = r'https?://[a-zA-Z0-9?_\-/.\?=#]+'
+                tmp_content = re.sub(r'\([^)]*\)|（[^）]*）', '', content) # remove author
+                links = re.findall(http_pattern, tmp_content)
+                remaining_content = re.sub(http_pattern, ' ', tmp_content) # remove links
+                remaining_content = remaining_content.strip()
+                texts = remaining_content.split(' ')
+                tmp_len = len(texts)
+                if tmp_len > len(links):
+                    tmp_len = len(links)
+                for i in range(tmp_len):
+                    text_link_markdown = "["+texts[i]+"]("+links[i]+")"
+                    cite_text_links.append(text_link_markdown)
+
+                doc_name = chunk.get('document_name')
+                if doc_name:
+                    cite_local_docs.append(doc_name)
+
+        ref_docs_ans = ""
+        for text_link in cite_text_links:
+            ref_docs_ans += "\n\n - " + text_link
+
+        doc_aggs = ref.get('doc_aggs')
+        for doc_agg in doc_aggs:
+            doc_agg_name = doc_agg.get('doc_name')
+            if doc_agg_name and doc_agg_name not in cite_local_docs:
+                ref_docs_ans += "\n\n - [" + doc_agg_name + "](javascript:void())"
+
+        ans = response.get('content')
+        if not ans:
+            return
+
+        tmp_ref = REF_DOC_EN
+        if is_chinese(ans):
+            tmp_ref = REF_DOC_CN
+        ref_docs_ans = "**" + tmp_ref + "**" + ref_docs_ans
+
+        ans += "\n\n" + ref_docs_ans
+
+        cite_pattern = r'\#\#[0-9]+\$\$'
+        ans = re.sub(cite_pattern, '', ans) # remove cite point
+        response['content'] = ans
+        return
