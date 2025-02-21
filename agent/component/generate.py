@@ -305,5 +305,7 @@ class Generate(ComponentBase):
 
         cite_pattern = r'\#\#[0-9]+\$\$'
         ans = re.sub(cite_pattern, '', ans) # remove cite point
+        star_pattern = r'\*\*'
+        ans = re.sub(star_pattern, '', ans)
         response['content'] = ans
         return
