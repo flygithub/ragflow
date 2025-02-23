@@ -251,6 +251,7 @@ class Generate(ComponentBase):
     def format_cite(self, response):
         REF_DOC_CN = "参考资料"
         REF_DOC_EN = "Reference Sources"
+        HTTP_DOC_KEY_CN = "网站"
 
         if not response:
             return
@@ -265,6 +266,11 @@ class Generate(ComponentBase):
         for chunk in chunks:
             content = chunk.get('content')
             if content and "http" in content: # suppose there is cite link in the chunk
+                doc_name = chunk.get('document_name')
+                if not doc_name or HTTP_DOC_KEY_CN not in doc_name:
+                    continue
+                cite_local_docs.append(doc_name)
+
                 http_pattern = r'https?://[a-zA-Z0-9?_\-/.\?=#]+'
                 tmp_content = re.sub(r'\([^)]*\)|（[^）]*）', '', content) # remove author
                 links = re.findall(http_pattern, tmp_content)
@@ -277,10 +283,6 @@ class Generate(ComponentBase):
                 for i in range(tmp_len):
                     text_link_markdown = "["+texts[i]+"]("+links[i]+")"
                     cite_text_links.append(text_link_markdown)
-
-                doc_name = chunk.get('document_name')
-                if doc_name:
-                    cite_local_docs.append(doc_name)
 
         ref_docs_ans = ""
         for text_link in cite_text_links:
