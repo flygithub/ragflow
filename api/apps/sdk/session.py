@@ -31,7 +31,7 @@ from api.db.services.dialog_service import DialogService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.utils import get_uuid
 from api.utils.api_utils import get_error_data_result
-from api.utils.api_utils import get_result, token_required
+from api.utils.api_utils import get_result, token_required, get_json_result
 from api.db.services.llm_service import LLMBundle
 from api.db.services.file_service import FileService
 
