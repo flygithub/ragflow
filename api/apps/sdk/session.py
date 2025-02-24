@@ -21,6 +21,7 @@ from flask import request, Response
 from api.db.services.conversation_service import ConversationService, iframe_completion
 from api.db.services.conversation_service import completion as rag_completion
 from api.db.services.canvas_service import completion as agent_completion
+from api.db.services.canvas_service import file_completion
 from api.db.services.dialog_service import ask
 from agent.canvas import Canvas
 from api.db import StatusEnum
