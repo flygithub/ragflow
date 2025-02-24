@@ -477,3 +477,37 @@ def agent_bot_completions(agent_id):
 
     for answer in agent_completion(objs[0].tenant_id, agent_id, **req):
         return get_result(data=answer)
+
+@manager.route('/agents/<agent_id>/files', methods=['POST'])  #
+@token_required
+def agent_completions_with_files(tenant_id, agent_id):
+    print(" === begin in files..")
+    print(" === request::"+str(request))
+    print(" === request.json::"+str(request.json))
+    print(" === request.form::"+str(request.form))
+    print(" === request.files::"+str(request.files))
+    if 'Files' not in request.files:
+        return get_json_result(
+            data=False, message='No file part!', code=settings.RetCode.ARGUMENT_ERROR)
+
+    file_objs = request.files.getlist('Files')
+    print(" === file_objs::"+str(file_objs))
+
+    filename = ""
+    for file_obj in file_objs:
+        print(" === file_obj::"+str(file_obj))
+        filename = file_obj.filename
+        if file_obj.filename == '':
+            return get_json_result(
+                data=False, message='No file selected!', code=settings.RetCode.ARGUMENT_ERROR)
+    print(" === filename::"+str(filename))
+    #txt = filename+"\n"+FileService.parse_docs(file_objs, tenant_id)+"\n----\n"
+    txt = FileService.parse_docs(file_objs, tenant_id)
+
+    print(" === txt::"+str(txt))
+    req = {}
+    req["Files"] = txt
+    for answer in file_completion(tenant_id, agent_id, **req):
+        print(" === answer in session::"+str(answer))
+        return get_result(data=answer)
+    print(" === after try agent_completion === ")

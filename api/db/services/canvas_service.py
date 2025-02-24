@@ -165,3 +165,102 @@ def completion(tenant_id, agent_id, question, session_id=None, stream=True, **kw
             API4ConversationService.append_message(conv.id, conv.to_dict())
             yield result
             break
+
+def file_completion(tenant_id, agent_id, **kwargs):
+    e, cvs = UserCanvasService.get_by_id(agent_id)
+    #print(" === cvs::"+str(cvs))
+    assert e, "Agent not found."
+    assert cvs.user_id == tenant_id, "You do not own the agent."
+    if not isinstance(cvs.dsl,str):
+        cvs.dsl = json.dumps(cvs.dsl, ensure_ascii=False)
+    canvas = Canvas(cvs.dsl, tenant_id)
+    #print(" === canvas::"+str(canvas))
+    canvas.reset()
+    #print(" === canvas after reset::"+str(canvas))
+    message_id = str(uuid4())
+    print(" === message_id::"+str(message_id))
+    query = canvas.get_preset_param()
+    print(" === query::"+str(query))
+
+    if query:
+        for ele in query:
+            print(" === ele at begin::"+str(ele))
+            if not ele["optional"]:
+                if not kwargs.get(ele["key"]):
+                    assert False, f"`{ele['key']}` is required"
+                ele["value"] = kwargs[ele["key"]]
+            if ele["optional"]:
+                if kwargs.get(ele["key"]):
+                    ele["value"] = kwargs[ele['key']]
+                    print(" === ele-value modified::")
+                else:
+                    if "value" in ele:
+                        ele.pop("value")
+
+            print(" === ele after::"+str(ele))
+
+    cvs.dsl = json.loads(str(canvas))
+    #print(" === cvs.dsl::"+str(cvs.dsl))
+    session_id=get_uuid()
+    conv = {
+        "id": session_id,
+        "dialog_id": cvs.id,
+        "user_id": "",
+        "message": [{"role": "assistant", "content": canvas.get_prologue(), "created_at": time.time()}],
+        "source": "agent",
+        "dsl": cvs.dsl
+    }
+    API4ConversationService.save(**conv)
+    print(" === canvas.get_prologue()::"+str(canvas.get_prologue()))
+    print(" === canvas.get_preset_param()::"+str(canvas.get_preset_param()))
+    '''
+    if query:
+        yield "data:" + json.dumps({"code": 0,
+            "message": "",
+            "data": {
+                "session_id": session_id,
+                "answer": canvas.get_prologue(),
+                "reference": [],
+                "param": canvas.get_preset_param()
+            }
+            },
+            ensure_ascii=False) + "\n\n"
+        yield "data:" + json.dumps({"code": 0, "message": "", "data": True}, ensure_ascii=False) + "\n\n"
+        #return
+    else:
+        conv = API4Conversation(**conv)
+    '''
+    conv = API4Conversation(**conv)
+    #print(" === conv 3::"+str(conv))
+
+    final_ans = {"reference": [], "content": ""}
+
+    print(" ===(my api) cvs.dsl before canvas run..")
+    print(" ===(my api) cvs.dsl::"+str(cvs.dsl))
+    print(" ===(my api) canvas before canvas run..")
+    print(" ===(my api) canvas::"+str(canvas))
+    for answer in canvas.run(stream=False):
+        #print(" === answer at begin::"+str(answer))
+        #print(" === canvas at begin::"+str(canvas))
+        if answer.get("running_status"):
+            continue
+        final_ans["content"] = "\n".join(answer["content"]) if "content" in answer else ""
+        canvas.messages.append({"role": "assistant", "content": final_ans["content"], "id": message_id})
+        #print(" === canvas.messages::"+str(canvas.messages))
+        if final_ans.get("reference"):
+            canvas.reference.append(final_ans["reference"])
+        #print(" === conv at begin::"+str(conv))
+        #conv.dsl = json.loads(str(canvas))
+        #conv.dsl = ""
+        #print(" === conv.dsl::"+str(conv.dsl))
+
+        result = {"answer": final_ans["content"], "reference": final_ans.get("reference", [])}
+        #print(" === result at begin::"+str(result))
+        #conv['message'] = ""
+        #result = structure_answer(conv, result, message_id, session_id)
+
+        #print(" === result 1::"+str(result))
+        #API4ConversationService.append_message(conv.id, conv.to_dict())
+        yield result
+        #print(" === result 2::"+str(result))
+        break

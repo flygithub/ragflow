@@ -404,6 +404,7 @@ class FileService(CommonService):
         parser_config = {"chunk_token_num": 16096, "delimiter": "\n!?;。；！？", "layout_recognize": "Plain Text"}
         exe = ThreadPoolExecutor(max_workers=12)
         threads = []
+        print(" === parser_config::"+str(parser_config))
         for file in file_objs:
             kwargs = {
                 "lang": "English",
@@ -413,13 +414,18 @@ class FileService(CommonService):
                 "to_page": 100000,
                 "tenant_id": user_id
             }
+            print(" === kwargs::"+str(kwargs))
+            print(" === file::"+str(file))
             filetype = filename_type(file.filename)
+            print(" === filetype::"+str(filetype))
             blob = file.read()
             threads.append(exe.submit(FACTORY.get(FileService.get_parser(filetype, file.filename, ""), naive).chunk, file.filename, blob, **kwargs))
 
         res = []
         for th in threads:
             res.append("\n".join([ck["content_with_weight"] for ck in th.result()]))
+            print(" === res::"+str(res))
+        print(" === res2::"+str(res))
 
         return "\n\n".join(res)
 
