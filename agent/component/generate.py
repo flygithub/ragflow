@@ -23,6 +23,7 @@ from api.db.services.llm_service import LLMBundle
 from api import settings
 from agent.component.base import ComponentBase, ComponentParamBase
 from rag.nlp import is_chinese
+from api.db.services.document_service import DocumentService
 
 
 class GenerateParam(ComponentParamBase):
@@ -91,7 +92,14 @@ class Generate(ComponentBase):
             if did in doc_ids:
                 continue
             doc_ids.add(did)
-            recall_docs.append({"doc_id": did, "doc_name": retrieval_res.loc[int(i), "docnm_kwd"]})
+            doc_url = "javascript:void()"
+            e, doc = DocumentService.get_by_id(did)
+            if e:
+                for tmpkey in doc.meta_fields:
+                    if tmpkey == "url":
+                        doc_url = doc.meta_fields[tmpkey]
+                        break
+            recall_docs.append({"doc_id": did, "doc_name": retrieval_res.loc[int(i), "docnm_kwd"], "url": doc_url})
 
         del retrieval_res["vector"]
         del retrieval_res["content_ltks"]
@@ -291,8 +299,11 @@ class Generate(ComponentBase):
         doc_aggs = ref.get('doc_aggs')
         for doc_agg in doc_aggs:
             doc_agg_name = doc_agg.get('doc_name')
+            doc_url = doc_agg.get('url')
+            if not doc_url:
+                doc_url = "javascript:void()"
             if doc_agg_name and doc_agg_name not in cite_local_docs:
-                ref_docs_ans += "\n\n - [" + doc_agg_name + "](javascript:void())"
+                ref_docs_ans += "\n\n - [" + doc_agg_name + "](" + doc_url +")"
 
         ans = response.get('content')
         if not ans:
