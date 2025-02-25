@@ -250,8 +250,8 @@ class Generate(ComponentBase):
         return pd.DataFrame([ans])
 
     def format_cite(self, response):
-        REF_DOC_CN = "参考资料"
-        REF_DOC_EN = "Reference Sources"
+        REF_DOC_CN = "参考资料:"
+        REF_DOC_EN = "Reference Sources:"
         HTTP_DOC_KEY_CN = "网站"
 
         if not response:
@@ -308,7 +308,7 @@ class Generate(ComponentBase):
                 if tmp_key == "url":
                     doc_url = doc.meta_fields[tmp_key]
                     break
-            ref_docs_ans += "\n\n - [" + doc_name + "](" + doc_url +")"
+            ref_docs_ans += "\n\n - [" + doc_name.split('.')[0] + "](" + doc_url +")"
 
         ans = response.get('content')
         if not ans:
@@ -317,9 +317,10 @@ class Generate(ComponentBase):
         tmp_ref = REF_DOC_EN
         if is_chinese(ans):
             tmp_ref = REF_DOC_CN
-        ref_docs_ans = "**" + tmp_ref + "**" + ref_docs_ans
+        ref_docs_ans = tmp_ref + ref_docs_ans
 
-        ans += "\n\n" + ref_docs_ans
+        if tmp_ref not in ans:
+            ans += "\n\n" + ref_docs_ans
 
         cite_pattern = r'\#\#[0-9]+\$\$'
         ans = re.sub(cite_pattern, '', ans) # remove cite point
