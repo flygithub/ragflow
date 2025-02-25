@@ -319,8 +319,10 @@ class Generate(ComponentBase):
             tmp_ref = REF_DOC_CN
         ref_docs_ans = tmp_ref + ref_docs_ans
 
-        if tmp_ref not in ans:
-            ans += "\n\n" + ref_docs_ans
+        if tmp_ref in ans:
+            parts = ans.split(tmp_ref, 1)
+            ans = parts[0] if parts else ans
+        ans += "\n\n" + ref_docs_ans
 
         cite_pattern = r'\#\#[0-9]+\$\$'
         ans = re.sub(cite_pattern, '', ans) # remove cite point
