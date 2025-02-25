@@ -92,14 +92,7 @@ class Generate(ComponentBase):
             if did in doc_ids:
                 continue
             doc_ids.add(did)
-            doc_url = "javascript:void()"
-            e, doc = DocumentService.get_by_id(did)
-            if e:
-                for tmpkey in doc.meta_fields:
-                    if tmpkey == "url":
-                        doc_url = doc.meta_fields[tmpkey]
-                        break
-            recall_docs.append({"doc_id": did, "doc_name": retrieval_res.loc[int(i), "docnm_kwd"], "url": doc_url})
+            recall_docs.append({"doc_id": did, "doc_name": retrieval_res.loc[int(i), "docnm_kwd"]})
 
         del retrieval_res["vector"]
         del retrieval_res["content_ltks"]
@@ -298,12 +291,24 @@ class Generate(ComponentBase):
 
         doc_aggs = ref.get('doc_aggs')
         for doc_agg in doc_aggs:
-            doc_agg_name = doc_agg.get('doc_name')
-            doc_url = doc_agg.get('url')
-            if not doc_url:
-                doc_url = "javascript:void()"
-            if doc_agg_name and doc_agg_name not in cite_local_docs:
-                ref_docs_ans += "\n\n - [" + doc_agg_name + "](" + doc_url +")"
+            doc_name = doc_agg.get('doc_name')
+            if not doc_name or doc_name in cite_local_docs:
+                continue
+
+            doc_id = doc_agg.get('doc_id')
+            if not doc_id:
+                continue
+
+            e, doc = DocumentService.get_by_id(doc_id)
+            if not e:
+                continue
+
+            doc_url = "javascript:void()"
+            for tmp_key in doc.meta_fields:
+                if tmp_key == "url":
+                    doc_url = doc.meta_fields[tmp_key]
+                    break
+            ref_docs_ans += "\n\n - [" + doc_name + "](" + doc_url +")"
 
         ans = response.get('content')
         if not ans:
